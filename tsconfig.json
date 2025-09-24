@@ -1,0 +1,15 @@
+{
+    "compilerOptions": {
+        "module": "es2022",
+        "outDir": "./dist",
+        "target": "ES2022",
+        "lib": [ "ES2022" ],
+        "noImplicitAny": false,
+        "preserveConstEnums": true,
+        "sourceMap": true,
+        "declaration": true,
+        "declarationDir": "./types"
+    },
+    "include": [ "src/index.ts" ],
+    "exclude": [ "node_modules" ]
+}

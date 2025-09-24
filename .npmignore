@@ -1,0 +1,14 @@
+.cache
+.git
+.gitignore
+.gitmodules
+CMakeLists.txt
+build
+compile_commands.json
+dependencies
+node_modules
+scripts
+src
+test
+tsconfig.json
+wasm
