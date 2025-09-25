@@ -23,8 +23,10 @@ private:
 
 class EM_ValueRetriever {
 public:
-    EM_ValueRetriever(std::shared_ptr<SIPlus::text::ValueRetriever> retriever) : 
-        retriever_(retriever) {}
+    EM_ValueRetriever(
+        std::shared_ptr<SIPlus::text::ValueRetriever> retriever,
+        std::shared_ptr<SIPlus::SIPlusParserContext> context) 
+        : retriever_(retriever), context_(context) {}
 
     emscripten::val
     retrieve(emscripten::val value) {
@@ -33,8 +35,7 @@ public:
         SIPlus::text::UnknownDataTypeContainer result = retriever_->retrieve(value_container);
 
         if(!result.is<emscripten::val>()) {
-            throw std::runtime_error{"WASM: Unknown result type from ValueRetriever. "
-                "Expected emscripten::val, got " + get_type_name(result.type)};
+            result = context_->convert<emscripten::val>(result);
         }
 
         return result.as<emscripten::val>();
@@ -42,6 +43,7 @@ public:
 
 private:
     std::shared_ptr<SIPlus::text::ValueRetriever> retriever_;
+    std::shared_ptr<SIPlus::SIPlusParserContext> context_;
 };
 
 class EM_SIParserContext {
@@ -66,7 +68,10 @@ public:
                 text.typeOf().as<std::string>()};
         }
 
-        return parser_.get_expression(text.as<std::string>());
+        return EM_ValueRetriever{
+            parser_.get_expression(text.as<std::string>()),
+            parser_.context().shared_from_this()
+        };
     }
 
     EM_TextConstructor

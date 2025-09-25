@@ -50,5 +50,4 @@ make -j4
 
 cd ..
 mkdir -p $OUT_DIR
-cp $BUILD_DIR/wasm/siplus_js.wasm $OUT_DIR/siplus_js.wasm
 cp $BUILD_DIR/wasm/siplus_js.js $OUT_DIR/siplus_js.js
