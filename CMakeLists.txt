@@ -1,5 +1,7 @@
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-command-line-argument -fexceptions --bind -s MODULARIZE -s SINGLE_FILE=1 -s EXPORT_ES6=1")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wno-unused-command-line-argument -fexceptions")
+set(EM_COMPILE_ARGS -Wno-unused-command-line-argument -fexceptions --bind -sMODULARIZE -sSINGLE_FILE=1 -sEXPORT_ES6=1)
+
+add_compile_options(${EM_COMPILE_ARGS})
+add_link_options(${EM_COMPILE_ARGS})
 
 add_subdirectory(dependencies)
 add_subdirectory(wasm)
