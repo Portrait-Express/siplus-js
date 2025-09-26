@@ -1,6 +1,6 @@
 {
     "name": "@portrait-express/siplus",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "JavaScript/Wasm bindings for SIPlus",
     "main": "./dist/index.js",
     "types": "./types/index.d.ts",
