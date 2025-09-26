@@ -25,7 +25,13 @@ type SIPlusModule = {
     getExceptionMessage: (e: number) => string
 };
 
-const module: SIPlusModule = await Module();
+var module: SIPlusModule|null = null;
+
+export async function siplus_init() {
+    if(!module) {
+        module = await Module();
+    }
+}
 
 function call<T>(c: () => T): T {
     try {
@@ -71,6 +77,10 @@ export class SIPlus {
     private _siplus: M_SIPlusParser;
 
     constructor() {
+        if(!module) {
+            throw new Error("Not initialized. Call siplus_initialize()");
+        }
+
         this._siplus = new module.SIPlus();
     }
 

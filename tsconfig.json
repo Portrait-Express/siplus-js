@@ -1,9 +1,9 @@
 {
     "compilerOptions": {
-        "module": "es2022",
+        "module": "commonjs",
         "outDir": "./dist",
-        "target": "ES2022",
-        "lib": [ "ES2022" ],
+        "target": "ES2016",
+        "lib": [ "ES2016" ],
         "noImplicitAny": false,
         "preserveConstEnums": true,
         "sourceMap": true,
