@@ -17,4 +17,9 @@ text.construct({ name: "world" }); // Hello, world
 
 var value = parser.parse_expression("map .id");
 value.retrieve([{ id: 1 }, { id: 2 }]); // [1, 2]
+
+//Must call delete on all objects to free WASM allocated memory.
+text.delete();
+value.delete();
+parser.delete();
 ```

@@ -1,28 +1,32 @@
 import Module from "../lib/siplus_js.js"
 
 declare interface M_SIPlusParser {
-    parse_interpolated(value: any): TextConstructor;
-    parse_expression(value: any): ValueRetriever;
+    parse_interpolated(value: any): M_TextConstructor;
+    parse_expression(value: any): M_ValueRetriever;
+    delete(): void;
 }
 
 declare interface M_ParserContext {
-
+    delete(): void;
 }
 
 declare interface M_ValueRetriever {
     retrieve(value: any): any;
+    delete(): void;
 }
 
 declare interface M_TextConstructor {
     construct(value: any): string;
+    delete(): void;
 }
 
 type SIPlusModule = {
-    SIPlus: new() => M_SIPlusParser;
-    ParserContext: new() => M_ParserContext,
-    ValueRetriever: new() => M_ValueRetriever,
-    TextConstructor: new() => M_TextConstructor,
-    getExceptionMessage: (e: number) => string
+    SIPlus: new () => M_SIPlusParser;
+    ParserContext: new () => M_ParserContext,
+    ValueRetriever: new () => M_ValueRetriever,
+    TextConstructor: new () => M_TextConstructor,
+    getExceptionMessage: (e: number) => string,
+    doLeakCheck: () => void
 };
 
 var module: SIPlusModule|null = null;
@@ -57,6 +61,12 @@ export class TextConstructor {
             return this._constructor.construct(data);
         })
     }
+
+    delete() {
+        return call(() => {
+            this._constructor.delete();
+        });
+    }
 }
 
 export class ValueRetriever {
@@ -70,6 +80,12 @@ export class ValueRetriever {
         return call(() => {
             return this._retriever.retrieve(data);
         })
+    }
+
+    delete() {
+        return call(() => {
+            this._retriever.delete();
+        });
     }
 }
 
@@ -95,8 +111,18 @@ export class SIPlus {
             return new ValueRetriever(this._siplus.parse_expression(expression));
         })
     }
+
+    delete() {
+        return call(() => {
+           this._siplus.delete();
+        });
+    }
 }
 
 export function getExceptionMessage(e: number) {
     return module.getExceptionMessage(e);
+}
+
+export function doLeakCheck() {
+    return module.doLeakCheck();
 }

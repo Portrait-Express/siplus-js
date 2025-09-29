@@ -11,5 +11,8 @@ test("Parser", async () => {
     var retriever = parser.parse_expression("map .id");
     var value = retriever.retrieve([{ id: 1 }, { id: 2 }]);
 
+    retriever.delete();
+    parser.delete();
+
     expect(value).toEqual([1, 2])
 })
