@@ -1,4 +1,4 @@
-const { siplus_init, SIPlus } = require("../dist/index.js");
+const { siplus_init, siplus_free, SIPlus } = require("../dist/index.js");
 
 test("Parser", async () => {
     await siplus_init();
@@ -15,4 +15,15 @@ test("Parser", async () => {
     parser.delete();
 
     expect(value).toEqual([1, 2])
+})
+
+test("locateFile", async () => {
+    siplus_free();
+    await siplus_init({
+        locateFile: () => {
+            return "./lib/siplus_js.wasm"
+        }
+    });
+
+    new SIPlus().parse_interpolation("Hello, { .text }"); //Test instantiation
 })

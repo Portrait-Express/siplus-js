@@ -31,10 +31,19 @@ type SIPlusModule = {
 
 var module: SIPlusModule|null = null;
 
-export async function siplus_init() {
+export type SIPlusLibraryOpts = {
+    locateFile?: (path: string) => string
+}
+
+export async function siplus_init(opts: SIPlusLibraryOpts) {
     if(!module) {
-        module = await Module();
+        module = await Module(opts);
     }
+}
+
+export function siplus_free() {
+    if(!module) return;
+    module = null;
 }
 
 function call<T>(c: () => T): T {
