@@ -35,15 +35,12 @@ export type SIPlusLibraryOpts = {
     locateFile?: (path: string) => string
 }
 
-export async function siplus_init(opts: SIPlusLibraryOpts) {
+export async function siplus(opts: SIPlusLibraryOpts): Promise<SIPlus> {
     if(!module) {
         module = await Module(opts);
     }
-}
 
-export function siplus_free() {
-    if(!module) return;
-    module = null;
+    return new SIPlus();
 }
 
 function call<T>(c: () => T): T {
@@ -98,7 +95,7 @@ export class ValueRetriever {
     }
 }
 
-export class SIPlus {
+class SIPlus {
     private _siplus: M_SIPlusParser;
 
     constructor() {

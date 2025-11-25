@@ -8,7 +8,6 @@ set(EM_COMPILE_ARGS
     -flto
     -sMALLOC=emmalloc
     -sMODULARIZE 
-    #-sSINGLE_FILE=1 
 )
 
 add_compile_options(${EM_COMPILE_ARGS})

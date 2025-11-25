@@ -2,7 +2,6 @@
 #include "siplus/parser.h"
 #include "siplus/text/constructor.h"
 #include "siplus/text/data.h"
-#include "siplus/util.h"
 
 #include <emscripten/bind.h>
 

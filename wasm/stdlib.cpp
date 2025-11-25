@@ -1,5 +1,4 @@
 #include <emscripten/bind.h>
-#include <iostream>
 #include <vector>
 
 #include "siplus/context.h"
@@ -54,13 +53,13 @@ struct JsAccessor : SIPlus::text::Accessor {
 
 struct JsStringConverter : SIPlus::text::Converter {
     SIPlus::text::UnknownDataTypeContainer 
-    convert(SIPlus::text::UnknownDataTypeContainer from, std::type_index to) override {
+    convert(const SIPlus::text::UnknownDataTypeContainer& from, std::type_index to) const override {
         auto& val = from.as<emscripten::val>();
         auto string = val.call<emscripten::val>("toString");
         return SIPlus::text::make_data(string.as<std::string>());
     }
 
-    bool can_convert(std::type_index from, std::type_index to) override {
+    bool can_convert(std::type_index from, std::type_index to) const override {
         return from == typeid(emscripten::val) && to == typeid(std::string);
     }
 };
@@ -103,13 +102,13 @@ struct JsArrayConverter : SIPlus::text::Converter {
     JsArrayConverter(std::shared_ptr<SIPlus::SIPlusParserContext> context) 
         : context_(context) {}
 
-    bool can_convert(std::type_index from, std::type_index to) override {
+    bool can_convert(std::type_index from, std::type_index to) const override {
         return from == typeid(std::vector<SIPlus::text::UnknownDataTypeContainer>)
             && to == typeid(emscripten::val);
     }
 
     SIPlus::text::UnknownDataTypeContainer 
-    convert(SIPlus::text::UnknownDataTypeContainer from, std::type_index to) override {
+    convert(const SIPlus::text::UnknownDataTypeContainer& from, std::type_index to) const override {
         emscripten::val arr = emscripten::val::global("Array").new_();
 
         for(auto value : from.as<std::vector<SIPlus::text::UnknownDataTypeContainer>>()) {
@@ -129,7 +128,7 @@ private:
 
 struct JsPrimitiveConverter : SIPlus::text::Converter {
     SIPlus::text::UnknownDataTypeContainer 
-    convert(SIPlus::text::UnknownDataTypeContainer from, std::type_index to) override {
+    convert(const SIPlus::text::UnknownDataTypeContainer& from, std::type_index to) const override {
         if(int_converter_.can_convert(from.type, typeid(long))) {
             long numVal = int_converter_.convert(from, typeid(long)).as<long>();
             return SIPlus::text::make_data(emscripten::val{numVal});
@@ -143,7 +142,7 @@ struct JsPrimitiveConverter : SIPlus::text::Converter {
         }
     }
     
-    bool can_convert(std::type_index from, std::type_index to) override {
+    bool can_convert(std::type_index from, std::type_index to) const override {
         return to == typeid(emscripten::val) && (
             int_converter_.can_convert(from, typeid(long)) ||
             float_converter_.can_convert(from, typeid(double)) ||
