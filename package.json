@@ -1,5 +1,5 @@
 {
-    "name": "@portrait-express/siplus",
+    "name": "@siplus/siplus",
     "version": "1.1.1",
     "description": "JavaScript/Wasm bindings for SIPlus",
     "main": "./dist/index.js",

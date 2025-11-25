@@ -1,4 +1,5 @@
 #include "siplus/context.h"
+#include "siplus/function.h"
 #include "siplus/parser.h"
 #include "siplus/text/constructor.h"
 #include "siplus/text/data.h"
@@ -6,6 +7,22 @@
 #include <emscripten/bind.h>
 
 #include "stdlib.h"
+
+class JsFunctionImpl : SIPlus::Function {
+    JsFunctionImpl(
+        emscripten::val impl
+    ) : impl_(impl) {}
+
+    std::shared_ptr<SIPlus::text::ValueRetriever> value(
+        std::shared_ptr<SIPlus::text::ValueRetriever> parent, 
+        std::vector<std::shared_ptr<SIPlus::text::ValueRetriever>> parameters
+    ) const override {
+        impl
+    }
+
+private:
+    emscripten::val impl_;
+};
 
 class EM_TextConstructor {
 public:
@@ -49,6 +66,14 @@ class EM_SIParserContext {
 public:
     EM_SIParserContext(std::shared_ptr<SIPlus::SIPlusParserContext> context)
         : context_(context) {}
+
+    void emplace_function(emscripten::val name, emscripten::val impl) {
+        if(!name.isString()) {
+            throw std::runtime_error{"expected first argument to be string. Got " + 
+                name.typeOf().as<std::string>()};
+        }
+        context_->emplace_function<JsFunctionImpl>(name.as<std::string>(), impl);
+    }
 
 private:
     std::shared_ptr<SIPlus::SIPlusParserContext> context_;
