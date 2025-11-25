@@ -12,16 +12,16 @@ npm i @portrait-express/siplus
 
 ## Usage
 ```js
-import { siplus_init, siplus_free, SIPlus } from "siplus";
+import { siplus, SIPlus } from "siplus";
 
-await siplus_init({ 
+const parser = await siplus({ 
     //Optional: wherever you host the wasm file if on web
     //Found at 'siplus/lib/siplus_js.wasm' 
     //ABI compatibility between versions is not guaranteed
+    //This will only be called once for the entire runtime duration.
     locateFile: () => "/static/assets/siplis_js.wasm" 
 })
 
-var parser = new SIPlus();
 var text = parser.parse_interpolation("Hello, { .name }");
 text.construct({ name: "world" }); // Hello, world
 
@@ -32,6 +32,4 @@ value.retrieve([{ id: 1 }, { id: 2 }]); // [1, 2]
 text.delete();
 value.delete();
 parser.delete();
-
-siplus_free();
 ```
