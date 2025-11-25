@@ -8,6 +8,7 @@
 #include "siplus/text/converter.h"
 #include "siplus/text/data.h"
 #include "siplus/text/iterator.h"
+#include "siplus/text/text.h"
 #include "siplus/util.h"
 
 #include "stdlib.h"
@@ -38,8 +39,8 @@ struct JsAccessor : SIPlus::text::Accessor {
             result = jVal[name];
         } else {
             throw std::runtime_error{
-                to_string("Cannot access property ", name, 
-                          " off object of type ", get_type_name(value.type),
+                SIPlus::util::to_string("Cannot access property ", name, 
+                          " off object of type ", SIPlus::text::get_type_name(value.type),
                           "/", type)};
         }
 
@@ -138,7 +139,7 @@ struct JsPrimitiveConverter : SIPlus::text::Converter {
         } else if(from.is<std::string>()) {
             return SIPlus::text::make_data(emscripten::val{from.as<std::string>()});
         } else {
-            throw std::runtime_error{"Cannot convert from " + get_type_name(from.type) + " to emscripten::val"};
+            throw std::runtime_error{"Cannot convert from " + SIPlus::text::get_type_name(from.type) + " to emscripten::val"};
         }
     }
     

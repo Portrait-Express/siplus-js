@@ -15,4 +15,22 @@ describe ('SIPlus Tests', () => {
         retriever.delete();
         parser.delete();
     })
+
+    test("Stdlib", async () => {
+        var parser = await siplus();
+        
+        try {
+            var retriever = parser.parse_expression(`"1,2,3,4,5" | split ","`);
+            expect(retriever.retrieve(null)).toEqual(["1", "2", "3", "4", "5"]);
+            retriever.delete();
+            var retriever = parser.parse_expression(`"1,2,3,4,5" | split ","`);
+            expect(retriever.retrieve(null)).toEqual(["1", "2", "3", "4", "5"]);
+            retriever.delete();
+            var retriever = parser.parse_expression(`"1,2,3,4,5" | split ","`);
+            expect(retriever.retrieve(null)).toEqual(["1", "2", "3", "4", "5"]);
+            retriever.delete();
+        } finally {
+            parser.delete();
+        }
+    });
 })
