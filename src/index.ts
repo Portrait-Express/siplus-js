@@ -1,12 +1,22 @@
 import Module from "../lib/siplus_js.js"
 
+export interface FunctionRetriever {
+    (val: any): any;
+}
+
+export interface SIPlusFunction {
+    (parent: ValueRetriever|null, parameters: ValueRetriever[]): FunctionRetriever;
+}
+
 declare interface M_SIPlusParser {
     parse_interpolated(value: any): M_TextConstructor;
     parse_expression(value: any): M_ValueRetriever;
+    context(): M_ParserContext;
     delete(): void;
 }
 
 declare interface M_ParserContext {
+    emplace_function(name: string, func: SIPlusFunction): void;
     delete(): void;
 }
 
@@ -22,7 +32,6 @@ declare interface M_TextConstructor {
 
 type SIPlusModule = {
     SIPlus: new () => M_SIPlusParser;
-    ParserContext: new () => M_ParserContext,
     ValueRetriever: new () => M_ValueRetriever,
     TextConstructor: new () => M_TextConstructor,
     getExceptionMessage: (e: number) => string,
@@ -40,7 +49,70 @@ export async function siplus(opts: SIPlusLibraryOpts): Promise<SIPlus> {
         module = await Module(opts);
     }
 
-    return new SIPlus();
+    return new SIPlusImpl();
+}
+
+export interface TextConstructor {
+    construct(data: any): string;
+    delete(): void;
+}
+
+export interface ValueRetriever {
+    retrieve(data: any): any;
+    delete(): void;
+}
+
+export interface SIPlusParserContext {
+    emplace_function(name: string, func: SIPlusFunction): void;
+    delete(): void;
+}
+
+export interface SIPlus {
+    parse_interpolation(template: string): TextConstructor;
+    parse_expression(expression: string): any;
+    context(): SIPlusParserContext;
+    delete(): void;
+}
+
+export function getExceptionMessage(e: number) {
+    return module.getExceptionMessage(e);
+}
+
+export function doLeakCheck() {
+    return module.doLeakCheck();
+}
+
+/**
+ * Utility function to provide similar functionality to 
+ * SIPlus::util::get_parameters_first_parent.
+ *
+ * @param {ValueRetriever|null} parent The parent parameter
+ * @param {ValueRetriever[]} parameters The parameter list
+ * @param {number} count The number of required parameters
+ * @param {number} [count_optional] The number of optional parameters. Default: 0
+ * @returns {ValueRetriever[]} The parameter list
+ */
+export function getParametersFirstParent(
+    parent: ValueRetriever|null, 
+    parameters: ValueRetriever[],
+    count: number, count_optional: number = 0
+): ValueRetriever[] {
+    let ret: ValueRetriever[] = []
+
+    if(parent) {
+        ret.push(parent);
+    }
+
+    ret.push(...parameters);
+
+    if(ret.length < count) {
+        throw RangeError(`Expected at least ${count} parameters. Got ${ret.length}`);
+    }
+    if(ret.length > count+count_optional) {
+        throw RangeError(`Expected at most ${count_optional} parameters. Got ${ret.length}`);
+    }
+
+    return ret;
 }
 
 function call<T>(c: () => T): T {
@@ -55,7 +127,7 @@ function call<T>(c: () => T): T {
     }
 }
 
-export class TextConstructor {
+class TextConstructorImpl {
     private _constructor: M_TextConstructor;
 
     constructor(text: M_TextConstructor) {
@@ -75,7 +147,7 @@ export class TextConstructor {
     }
 }
 
-export class ValueRetriever {
+class ValueRetrieverImpl implements ValueRetriever {
     private _retriever: M_ValueRetriever;
 
     constructor(retriever: M_ValueRetriever) {
@@ -95,7 +167,27 @@ export class ValueRetriever {
     }
 }
 
-class SIPlus {
+class SIPlusParserContextImpl implements SIPlusParserContext {
+    private _context: M_ParserContext;
+
+    constructor(impl: M_ParserContext) {
+        this._context = impl;
+    }
+
+    emplace_function(name: string, func: SIPlusFunction): void {
+        call(() => {
+            this._context.emplace_function(name, func);
+        });
+    }
+
+    delete() {
+        call(() => {
+            this._context.delete();
+        })
+    }
+}
+
+class SIPlusImpl implements SIPlus {
     private _siplus: M_SIPlusParser;
 
     constructor() {
@@ -106,15 +198,21 @@ class SIPlus {
         this._siplus = new module.SIPlus();
     }
 
-    parse_interpolation(template: string): TextConstructor {
+    parse_interpolation(template: string): TextConstructor{
         return call(() => {
-            return new TextConstructor(this._siplus.parse_interpolated(template));
+            return new TextConstructorImpl(this._siplus.parse_interpolated(template));
         })
     }
 
     parse_expression(expression: string): any {
         return call(() => {
-            return new ValueRetriever(this._siplus.parse_expression(expression));
+            return new ValueRetrieverImpl(this._siplus.parse_expression(expression));
+        })
+    }
+
+    context() {
+        return call(() => {
+            return new SIPlusParserContextImpl(this._siplus.context());
         })
     }
 
@@ -123,12 +221,4 @@ class SIPlus {
            this._siplus.delete();
         });
     }
-}
-
-export function getExceptionMessage(e: number) {
-    return module.getExceptionMessage(e);
-}
-
-export function doLeakCheck() {
-    return module.doLeakCheck();
 }
