@@ -51,16 +51,19 @@ export async function siplus(opts: SIPlusLibraryOpts): Promise<SIPlus> {
 export interface TextConstructor {
     construct(data: any): string;
     delete(): void;
+    [Symbol.dispose](): void;
 }
 
 export interface ValueRetriever {
     retrieve(data: any): any;
     delete(): void;
+    [Symbol.dispose](): void;
 }
 
 export interface SIPlusParserContext {
     emplace_function(name: string, func: FunctionRetriever): void;
     delete(): void;
+    [Symbol.dispose](): void;
 }
 
 export interface SIPlus {
@@ -68,6 +71,7 @@ export interface SIPlus {
     parse_expression(expression: string): any;
     context(): SIPlusParserContext;
     delete(): void;
+    [Symbol.dispose](): void;
 }
 
 export function getExceptionMessage(e: number) {
@@ -141,6 +145,10 @@ class TextConstructorImpl {
             this._constructor.delete();
         });
     }
+
+    [Symbol.dispose]() {
+        this.delete();
+    }
 }
 
 class ValueRetrieverImpl implements ValueRetriever {
@@ -161,6 +169,10 @@ class ValueRetrieverImpl implements ValueRetriever {
             this._retriever.delete();
         });
     }
+
+    [Symbol.dispose]() {
+        this.delete();
+    }
 }
 
 class SIPlusParserContextImpl implements SIPlusParserContext {
@@ -180,6 +192,10 @@ class SIPlusParserContextImpl implements SIPlusParserContext {
         call(() => {
             this._context.delete();
         })
+    }
+
+    [Symbol.dispose]() {
+        this.delete();
     }
 }
 
@@ -216,5 +232,9 @@ class SIPlusImpl implements SIPlus {
         return call(() => {
            this._siplus.delete();
         });
+    }
+
+    [Symbol.dispose]() {
+        this.delete();
     }
 }
