@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "siplus/text/value_retrievers/retriever.h"
 #include "siplus/util.h"
 #include "stdlib.h"
 
@@ -62,50 +63,59 @@ private:
 struct JsFunctionValueRetriever : SIPlus::text::ValueRetriever {
     JsFunctionValueRetriever(
         std::weak_ptr<SIPlus::SIPlusParserContext> context,
+        std::shared_ptr<SIPlus::text::ValueRetriever> parent,
+        std::vector<std::shared_ptr<SIPlus::text::ValueRetriever>> parameters,
         emscripten::val impl
-    ) : context_(context), impl_(impl) { }
+    ) : context_(context), parent_(parent), parameters_(parameters), impl_(impl) {
+        assert_typeof("function_impl", impl_, "function");
+    }
 
     SIPlus::text::UnknownDataTypeContainer retrieve(
-        const SIPlus::text::UnknownDataTypeContainer &value) const override {
+        const SIPlus::text::UnknownDataTypeContainer &value
+    ) const override {
         auto ctx = context_.lock();
-        auto val = ctx->convert<emscripten::val>(value).as<emscripten::val>();
-        auto ret = impl_(val);
+        auto arr = emscripten::val::global("Array").new_(parameters_.size() + 2);
+
+        //Base value
+        arr.set(0, ctx->convert<emscripten::val>(value).as<emscripten::val>());
+
+        //Parent value
+        auto parentVal = parent_->retrieve(value);
+        arr.set(1, ctx->convert<emscripten::val>(parentVal).as<emscripten::val>());
+
+        //Set parameters
+        for(int i = 0; i < parameters_.size(); i++) {
+            auto paramVal = parameters_[i]->retrieve(value);
+            arr.set(i + 2, ctx->convert<emscripten::val>(paramVal).as<emscripten::val>());
+        }
+
+        //Invoke function
+        auto ret = impl_.call<emscripten::val>("apply", emscripten::val::null(), arr);
+        
         return SIPlus::text::make_data(ret);
     }
 
 private:
     std::weak_ptr<SIPlus::SIPlusParserContext> context_;
+    std::shared_ptr<SIPlus::text::ValueRetriever> parent_;
+    std::vector<std::shared_ptr<SIPlus::text::ValueRetriever>> parameters_;
     emscripten::val impl_;
 };
 
 struct JsFunctionImpl : SIPlus::Function {
     JsFunctionImpl(
-        emscripten::val impl,
-        std::weak_ptr<SIPlus::SIPlusParserContext> context
-    ) : impl_(impl), context_(context) {}
+        std::weak_ptr<SIPlus::SIPlusParserContext> context,
+        emscripten::val impl
+    ) : context_(context), impl_(impl) {
+        assert_typeof("function_impl", impl_, "function");
+    }
 
     std::shared_ptr<SIPlus::text::ValueRetriever> value(
         std::shared_ptr<SIPlus::text::ValueRetriever> parent, 
         std::vector<std::shared_ptr<SIPlus::text::ValueRetriever>> parameters
     ) const override {
-        assert_typeof("function_impl", impl_, "function");
-
         auto ctx = context_.lock();
-
-        emscripten::val parent_val = emscripten::val::null();
-        auto arr = emscripten::val::global("Array").new_(parameters.size());
-
-        if(parent) {
-            parent_val = emscripten::val{EM_ValueRetriever{ctx, parent}};
-        }
-        
-        for(int i = 0; i < parameters.size(); i++) {
-            arr.set(i, EM_ValueRetriever{ctx, parameters[i]});
-        }
-            
-        auto ret = impl_(parent_val, arr);
-
-        return std::make_shared<JsFunctionValueRetriever>(ctx, ret);
+        return std::make_shared<JsFunctionValueRetriever>(ctx, parent, parameters, impl_);
     }
 
 private:
@@ -122,7 +132,7 @@ public:
         assert_typeof("name", name, "string");
         assert_typeof("impl", impl, "function");
 
-        context_->emplace_function<JsFunctionImpl>(name.as<std::string>(), impl, context_);
+        context_->emplace_function<JsFunctionImpl>(name.as<std::string>(), context_, impl);
     }
 
 private:

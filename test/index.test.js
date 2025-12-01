@@ -19,25 +19,22 @@ describe ('SIPlus Tests', () => {
     test("Function", async () => {
         var parser = await siplus();
 
-        function a(parent, parameters) {
-            const [input, toAppend] = getParametersFirstParent(parent, parameters, 2);
-
-            return (value) => {
-                let data = input.retrieve(value);
-                let toAppendVal = toAppend.retrieve(value);
-
-                return data + toAppendVal;
+        var func = (_, parent, toAppend) => {
+            if(typeof parent !== "string" || typeof toAppend !== "string") {
+                throw Error("Parent or toAppend is not string");
             }
+
+            return parent + toAppend;
         }
 
         let ctx = parser.context()
-        ctx.emplace_function("testAppend", a);
+        ctx.emplace_function("testAppend", func);
         ctx.delete();
 
         var retriever = parser.parse_expression(`"Hello, " | testAppend "World"`);
         expect(retriever.retrieve(null)).toEqual("Hello, World");
-        retriever.delete();
 
+        retriever.delete();
         parser.delete();
     })
 

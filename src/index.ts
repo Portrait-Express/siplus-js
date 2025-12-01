@@ -1,11 +1,7 @@
 import Module from "../lib/siplus_js.js"
 
 export interface FunctionRetriever {
-    (val: any): any;
-}
-
-export interface SIPlusFunction {
-    (parent: ValueRetriever|null, parameters: ValueRetriever[]): FunctionRetriever;
+    (value: any, parent: any, ...parameters: any[]): any;
 }
 
 declare interface M_SIPlusParser {
@@ -16,7 +12,7 @@ declare interface M_SIPlusParser {
 }
 
 declare interface M_ParserContext {
-    emplace_function(name: string, func: SIPlusFunction): void;
+    emplace_function(name: string, func: FunctionRetriever): void;
     delete(): void;
 }
 
@@ -63,7 +59,7 @@ export interface ValueRetriever {
 }
 
 export interface SIPlusParserContext {
-    emplace_function(name: string, func: SIPlusFunction): void;
+    emplace_function(name: string, func: FunctionRetriever): void;
     delete(): void;
 }
 
@@ -174,7 +170,7 @@ class SIPlusParserContextImpl implements SIPlusParserContext {
         this._context = impl;
     }
 
-    emplace_function(name: string, func: SIPlusFunction): void {
+    emplace_function(name: string, func: FunctionRetriever): void {
         call(() => {
             this._context.emplace_function(name, func);
         });
