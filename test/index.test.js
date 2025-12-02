@@ -1,18 +1,43 @@
-const { siplus, getParametersFirstParent } = require("../dist/index.js");
+const { siplus } = require("../dist/index.js");
 
-describe ('SIPlus Tests', () => {
+function test_interpolation(parser, expr, value, expected) {
+    var constructor = parser.parse_interpolation(expr);
+    try {
+        const result = constructor.construct(value);
+        expect(result).toEqual(expected);
+    } finally {
+        constructor.delete();
+    }
+}
+
+function test_expression(parser, expr, value, expected) {
+    var retriever = parser.parse_expression(expr);
+    try {
+        const result = retriever.retrieve(value);
+        expect(result).toEqual(expected);
+    } finally {
+        retriever.delete();
+    }
+}
+
+describe('SIPlus Tests', () => {
     test("Parser", async () => {
         var parser = await siplus();
 
-        var retriever = parser.parse_interpolation("Hello {.id}");
-        expect(retriever.construct({id: 1})).toEqual("Hello 1");
-        retriever.delete();
+        test_interpolation(parser, "Hello { .id }", {id: 1}, "Hello 1")
+        test_expression(parser, "map . .id", [{id: 1}, {id: 2}], [1, 2])
 
-        var retriever = parser.parse_expression("map . .id");
-        expect(retriever.retrieve([{ id: 1 }, { id: 2 }]))
-            .toEqual([1, 2]);
+        parser.delete();
+    })
 
-        retriever.delete();
+    test("Converters", async () => {
+        var parser = await siplus();
+
+        test_expression(parser, `eq 9 .`,     "9",  true)
+        test_expression(parser, `eq "9" .`,   9,    true)
+        test_expression(parser, `and true .`,  true, true)
+        test_expression(parser, `and false .`, true, false)
+
         parser.delete();
     })
 

@@ -44,9 +44,7 @@ public:
 
     emscripten::val
     retrieve(emscripten::val value) {
-        SIPlus::text::UnknownDataTypeContainer value_container = SIPlus::text::make_data(value);
-
-        SIPlus::text::UnknownDataTypeContainer result = retriever_->retrieve(value_container);
+        auto result = retriever_->retrieve(decay(value));
 
         if(!result.is<emscripten::val>()) {
             result = context_->convert<emscripten::val>(result);
@@ -92,7 +90,7 @@ struct JsFunctionValueRetriever : SIPlus::text::ValueRetriever {
         //Invoke function
         auto ret = impl_.call<emscripten::val>("apply", emscripten::val::null(), arr);
         
-        return SIPlus::text::make_data(ret);
+        return SIPlus::text::make_data(decay(ret));
     }
 
 private:

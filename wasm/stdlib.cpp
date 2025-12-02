@@ -13,7 +13,7 @@
 
 #include "stdlib.h"
 
-SIPlus::text::UnknownDataTypeContainer decay(emscripten::val val) {
+SIPlus::text::UnknownDataTypeContainer decay(const emscripten::val& val) {
     if(val.isString()) {
         return SIPlus::text::make_data(val.as<std::string>());
     } else if(val.isNumber()) {
@@ -27,6 +27,9 @@ SIPlus::text::UnknownDataTypeContainer decay(emscripten::val val) {
     }
 }
 
+/**
+ * struct JsAccessor - Accessor class for JS objects
+ */
 struct JsAccessor : SIPlus::text::Accessor {
     SIPlus::text::UnknownDataTypeContainer 
     access(const SIPlus::text::UnknownDataTypeContainer &value, 
@@ -44,24 +47,11 @@ struct JsAccessor : SIPlus::text::Accessor {
                           "/", type)};
         }
 
-        return decay(result);
+        return SIPlus::text::make_data(decay(result));
     }
 
     bool can_access(const SIPlus::text::UnknownDataTypeContainer &value) override {
         return value.is<emscripten::val>();
-    }
-};
-
-struct JsStringConverter : SIPlus::text::Converter {
-    SIPlus::text::UnknownDataTypeContainer 
-    convert(const SIPlus::text::UnknownDataTypeContainer& from, std::type_index to) const override {
-        auto& val = from.as<emscripten::val>();
-        auto string = val.call<emscripten::val>("toString");
-        return SIPlus::text::make_data(string.as<std::string>());
-    }
-
-    bool can_convert(std::type_index from, std::type_index to) const override {
-        return from == typeid(emscripten::val) && to == typeid(std::string);
     }
 };
 
@@ -89,7 +79,7 @@ struct JsIterator : SIPlus::text::IteratorProvider {
         }
 
         SIPlus::text::UnknownDataTypeContainer current() override {
-            return SIPlus::text::make_data(value_[i_]);
+            return SIPlus::text::make_data(decay(value_[i_]));
         }
 
     private:
@@ -127,7 +117,7 @@ private:
     std::shared_ptr<SIPlus::SIPlusParserContext> context_;
 };
 
-struct JsPrimitiveConverter : SIPlus::text::Converter {
+struct ToJsPrimitiveConverter : SIPlus::text::Converter {
     SIPlus::text::UnknownDataTypeContainer 
     convert(const SIPlus::text::UnknownDataTypeContainer& from, std::type_index to) const override {
         if(int_converter_.can_convert(from.type, typeid(long))) {
@@ -138,6 +128,8 @@ struct JsPrimitiveConverter : SIPlus::text::Converter {
             return SIPlus::text::make_data(emscripten::val{floatVal});
         } else if(from.is<std::string>()) {
             return SIPlus::text::make_data(emscripten::val{from.as<std::string>()});
+        } else if(from.is<bool>()) {
+            return SIPlus::text::make_data(emscripten::val{from.as<bool>()});
         } else {
             throw std::runtime_error{"Cannot convert from " + SIPlus::text::get_type_name(from.type) + " to emscripten::val"};
         }
@@ -147,7 +139,8 @@ struct JsPrimitiveConverter : SIPlus::text::Converter {
         return to == typeid(emscripten::val) && (
             int_converter_.can_convert(from, typeid(long)) ||
             float_converter_.can_convert(from, typeid(double)) ||
-            from == typeid(std::string)
+            from == typeid(std::string) ||
+            from == typeid(bool)
         );
     }
 
@@ -156,12 +149,79 @@ private:
     SIPlus::stl::float_converter float_converter_;
 };
 
+template<typename T>
+SIPlus::text::UnknownDataTypeContainer conv(
+    const SIPlus::SIPlusParserContext& ctx,
+    const emscripten::val val
+) {
+    std::string type = val.typeOf().as<std::string>();
+
+    if(type == "string") {
+        if constexpr (std::same_as<T, std::string>) {
+            return SIPlus::text::make_data(val.as<std::string>());
+        } else {
+            return ctx.convert<T>(SIPlus::text::make_data(val.as<std::string>()));
+        }
+    } else if(type == "number") {
+        if constexpr (std::same_as<T, long>) {
+            return SIPlus::text::make_data(val.as<long>());
+        } else if constexpr(std::same_as<T, double>) {
+            return SIPlus::text::make_data(val.as<double>());
+        } else {
+            return ctx.convert<T>(SIPlus::text::make_data(val.as<double>()));
+        }
+    } else if(type == "boolean") {
+        return ctx.convert<T>(SIPlus::text::make_data(val.as<bool>()));
+    } else {
+        throw std::runtime_error{"Cannot convert from " + type + " to " + SIPlus::text::get_type_name(typeid(T))};
+    }
+}
+
+struct FromJsPrimitiveConverter : SIPlus::text::Converter {
+    FromJsPrimitiveConverter(
+        std::weak_ptr<SIPlus::SIPlusParserContext> ctx
+    ) : ctx_(ctx) { }
+
+    SIPlus::text::UnknownDataTypeContainer 
+    convert(const SIPlus::text::UnknownDataTypeContainer& from, std::type_index to) const override {
+        auto ctx = ctx_.lock();
+        auto& val = from.as<emscripten::val>();
+
+        if(to == typeid(std::string)) {
+            auto string = val.call<emscripten::val>("toString");
+            return SIPlus::text::make_data(string.as<std::string>());
+        } else if(to == typeid(long)) {
+            return conv<long>(*ctx, val);
+        } else if(to == typeid(double)) {
+            return conv<double>(*ctx, val);
+        } else if(to == typeid(bool)) {
+            return conv<bool>(*ctx, val);
+        } else {
+            throw std::runtime_error{"Cannot convert from " + 
+                SIPlus::text::get_type_name(from.type) + " to " + 
+                SIPlus::text::get_type_name(to)};
+        }
+    }
+    
+    bool can_convert(std::type_index from, std::type_index to) const override {
+        return from == typeid(emscripten::val) && (
+            to == typeid(long) ||
+            to == typeid(double) ||
+            to == typeid(bool) ||
+            to == typeid(std::string)
+        );
+    }
+
+private:
+    std::weak_ptr<SIPlus::SIPlusParserContext> ctx_;
+};
+
 int attach_stl(std::shared_ptr<SIPlus::SIPlusParserContext> context) {
     context->emplace_accessor<JsAccessor>();
 
-    context->emplace_converter<JsStringConverter>();
     context->emplace_converter<JsArrayConverter>(context);
-    context->emplace_converter<JsPrimitiveConverter>();
+    context->emplace_converter<ToJsPrimitiveConverter>();
+    context->emplace_converter<FromJsPrimitiveConverter>(context);
 
     context->emplace_iterator<JsIterator>();
 
