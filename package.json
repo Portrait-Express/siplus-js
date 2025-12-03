@@ -5,6 +5,12 @@
     "main": "./dist/index.js",
     "types": "./types/index.d.ts",
     "type": "commonjs",
+    "files": [
+        "dist/",
+        "lib/",
+        "types/",
+        "Readme.md"
+    ],
     "scripts": {
         "build": "npm run build:cpp && tsc",
         "build:debug": "npm run build:cpp:debug && tsc",

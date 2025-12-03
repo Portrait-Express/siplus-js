@@ -2,8 +2,8 @@
     "compilerOptions": {
         "module": "commonjs",
         "outDir": "./dist",
-        "target": "ES2016",
-        "lib": [ "ES2016" ],
+        "target": "ES2022",
+        "lib": [ "ES2022", "DOM" ],
         "noImplicitAny": false,
         "preserveConstEnums": true,
         "sourceMap": true,

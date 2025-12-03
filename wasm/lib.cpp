@@ -180,7 +180,7 @@ std::string getExceptionMessage(int eptr) {
 }
 
 EMSCRIPTEN_BINDINGS(siplus) {
-    emscripten::function("getExceptionMessage", &getExceptionMessage);
+    emscripten::function("siGetExceptionMessage", &getExceptionMessage);
 
     auto parser_class = emscripten::class_<EM_SIParser>("SIPlus")
         .constructor()

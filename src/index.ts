@@ -27,10 +27,15 @@ declare interface M_TextConstructor {
 }
 
 type SIPlusModule = {
+    incrementExceptionRefcount: (e: any) => void,
+    decrementExceptionRefcount: (e: any) => void,
+    getExceptionMessage: (e: any) => string,
+    getCppExceptionThrownObjectFromWebAssemblyException: (e: any) => number,
+    siGetExceptionMessage: (e: number) => string,
+    getCppExceptionTag: (e: any) => any,
     SIPlus: new () => M_SIPlusParser;
     ValueRetriever: new () => M_ValueRetriever,
     TextConstructor: new () => M_TextConstructor,
-    getExceptionMessage: (e: number) => string,
     doLeakCheck: () => void
 };
 
@@ -79,14 +84,6 @@ export interface SIPlus {
     [Symbol.dispose](): void;
 }
 
-export function getExceptionMessage(e: number) {
-    return module.getExceptionMessage(e);
-}
-
-export function doLeakCheck() {
-    return module.doLeakCheck();
-}
-
 /**
  * Utility function to provide similar functionality to 
  * SIPlus::util::get_parameters_first_parent.
@@ -125,7 +122,10 @@ function call<T>(c: () => T): T {
         return c();
     } catch(e) {
         if(typeof e === 'number') {
-            throw new Error(getExceptionMessage(e));
+            throw new Error(module.siGetExceptionMessage(e));
+        } else if(e instanceof (WebAssembly as any).Exception) {
+            let ptr = module.getCppExceptionThrownObjectFromWebAssemblyException(e);
+            throw new Error(module.siGetExceptionMessage(ptr));
         } else {
             throw e;
         }
