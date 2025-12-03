@@ -3,12 +3,8 @@ set(EM_COMPILE_ARGS
     -DNDEBUG
     -sMALLOC=emmalloc
     -sMODULARIZE 
-    "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['\$getCppExceptionTag', '\$getCppExceptionThrownObjectFromWebAssemblyException']"
-    "-sEXPORTED_FUNCTIONS=['getCppExceptionTag', 'getCppExceptionThrownObjectFromWebAssemblyException']"
-    -sEXPORT_EXCEPTION_HANDLING_HELPERS
     -flto
     -fwasm-exceptions
-    --bind 
 )
 
 add_compile_options(${EM_COMPILE_ARGS})
