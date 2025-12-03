@@ -1,6 +1,6 @@
 {
     "name": "@siplus/siplus",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "description": "JavaScript/Wasm bindings for SIPlus",
     "main": "./dist/index.js",
     "types": "./types/index.d.ts",
