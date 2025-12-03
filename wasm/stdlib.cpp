@@ -20,8 +20,6 @@ SIPlus::text::UnknownDataTypeContainer decay(const emscripten::val& val) {
         return SIPlus::text::make_data(val.as<double>());
     } else if(val.isTrue() || val.isFalse()) {
         return SIPlus::text::make_data(val.as<bool>());
-    } else if(val.isNull() || val.isUndefined()) {
-        return SIPlus::text::UnknownDataTypeContainer{};
     } else {
         return SIPlus::text::make_data(val);
     }

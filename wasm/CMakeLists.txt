@@ -13,7 +13,12 @@ set(EMSCRIPTEN_LINK_FLAGS "-s WASM=2 -s INVOKE_RUN=0")
 
 # This essentially duplicates the flags in em++ to the COMPILE_FLAGS variable
 # This is to ensure the flags are included in the compile_commands.json file
-execute_process(COMMAND bash -c "echo -n \"\$(em++ --cflags)\"" OUTPUT_VARIABLE EM_CFLAGS)
+message("${EM_COMPILE_ARGS}")
+
+string(REPLACE ";" " " EM_COMPILE_ARGS_STR "${EM_COMPILE_ARGS}")
+execute_process(
+    COMMAND bash -c "echo -n \"\$(em++ --cflags ${EM_COMPILE_ARGS_STR})\"" 
+    OUTPUT_VARIABLE EM_CFLAGS)
 set_target_properties(siplus_js PROPERTIES COMPILE_FLAGS "${EM_CFLAGS}")
 
 target_link_libraries(siplus_js siplus)

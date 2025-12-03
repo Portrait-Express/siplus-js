@@ -1,13 +1,11 @@
 set(EM_COMPILE_ARGS 
     -Wno-unused-command-line-argument 
-    -fexceptions 
-    --bind 
-    -sASSERTIONS=0
-    -Os
     -DNDEBUG
-    -flto
     -sMALLOC=emmalloc
     -sMODULARIZE 
+    -flto
+    -fwasm-exceptions
+    --bind 
 )
 
 add_compile_options(${EM_COMPILE_ARGS})
