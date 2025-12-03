@@ -1,6 +1,6 @@
 const { siplus } = require("../dist/index.js");
 
-describe ('SIPlus Tests', () => {
+describe ('Loading test', () => {
     test("locateFile", async () => {
         let parser = await siplus({
             locateFile: () => {

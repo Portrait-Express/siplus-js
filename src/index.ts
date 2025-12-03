@@ -37,11 +37,16 @@ type SIPlusModule = {
 var module: SIPlusModule|null = null;
 
 export type SIPlusLibraryOpts = {
-    locateFile?: (path: string) => string
+    locateFile?: (path: string) => string,
+    wasmBinary?: Uint8Array
 }
 
-export async function siplus(opts: SIPlusLibraryOpts): Promise<SIPlus> {
+export async function siplus(opts?: SIPlusLibraryOpts): Promise<SIPlus> {
     if(!module) {
+        if(opts?.wasmBinary) {
+            Module['wasmBinary'] = opts.wasmBinary;
+        }
+
         module = await Module(opts);
     }
 
