@@ -186,7 +186,9 @@ struct FromJsPrimitiveConverter : SIPlus::text::Converter {
         auto& val = from.as<emscripten::val>();
 
         if(to == typeid(std::string)) {
-            auto string = emscripten::val::global("String").new_(val);
+            auto string = emscripten::val::global("String")
+                .call<emscripten::val>("apply", emscripten::val::null(), val);
+
             return SIPlus::text::make_data(string.as<std::string>());
         } else if(to == typeid(long)) {
             return conv<long>(*ctx, val);

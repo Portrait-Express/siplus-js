@@ -80,4 +80,24 @@ describe('SIPlus Tests', () => {
             parser.delete();
         }
     });
+
+    test("Accessor", async () => {
+        var parser = await siplus();
+        
+        try {
+            let retriever = parser.parse_expression(`.fake`);
+            expect(retriever.retrieve({})).toEqual(undefined);
+            retriever.delete();
+
+            retriever = parser.parse_expression(`.b`);
+            expect(retriever.retrieve({ b: 2 })).toEqual(2);
+            retriever.delete();
+
+            retriever = parser.parse_interpolation(`{ .fake }`);
+            expect(retriever.construct({})).toEqual("");
+            retriever.delete();
+        } finally {
+            parser.delete();
+        }
+    });
 })
