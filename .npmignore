@@ -12,3 +12,4 @@ src
 test
 tsconfig.json
 wasm
+docs
