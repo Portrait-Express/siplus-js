@@ -14,7 +14,13 @@ function test_expression(parser, expr, value, expected) {
     var retriever = parser.parse_expression(expr);
     try {
         const result = retriever.retrieve(value);
-        expect(result).toEqual(expected);
+        if(typeof expected === 'function') {
+            if(!expected(result)) {
+                throw new Error(`Expression "${expr}" failed. Result test function failed.`)
+            }
+        } else {
+            expect(result).toEqual(expected);
+        }
     } finally {
         retriever.delete();
     }
@@ -26,17 +32,6 @@ describe('SIPlus Tests', () => {
 
         test_interpolation(parser, "Hello { .id }", {id: 1}, "Hello 1")
         test_expression(parser, "map . .id", [{id: 1}, {id: 2}], [1, 2])
-
-        parser.delete();
-    })
-
-    test("Converters", async () => {
-        var parser = await siplus();
-
-        test_expression(parser, `eq 9 .`,     "9",  true)
-        test_expression(parser, `eq "9" .`,   9,    true)
-        test_expression(parser, `and true .`,  true, true)
-        test_expression(parser, `and false .`, true, false)
 
         parser.delete();
     })
@@ -63,24 +58,6 @@ describe('SIPlus Tests', () => {
         parser.delete();
     })
 
-    test("Stdlib", async () => {
-        var parser = await siplus();
-        
-        try {
-            var retriever = parser.parse_expression(`"1,2,3,4,5" | split ","`);
-            expect(retriever.retrieve(null)).toEqual(["1", "2", "3", "4", "5"]);
-            retriever.delete();
-            var retriever = parser.parse_expression(`"1,2,3,4,5" | split ","`);
-            expect(retriever.retrieve(null)).toEqual(["1", "2", "3", "4", "5"]);
-            retriever.delete();
-            var retriever = parser.parse_expression(`"1,2,3,4,5" | split ","`);
-            expect(retriever.retrieve(null)).toEqual(["1", "2", "3", "4", "5"]);
-            retriever.delete();
-        } finally {
-            parser.delete();
-        }
-    });
-
     test("Accessor", async () => {
         var parser = await siplus();
         
@@ -101,3 +78,34 @@ describe('SIPlus Tests', () => {
         }
     });
 })
+
+describe("Stdlib", () => {
+    it("Converters", async () => {
+        var parser = await siplus();
+
+        test_expression(parser, `eq 9 .`,     "9",  true)
+        test_expression(parser, `eq "9" .`,   9,    true)
+        test_expression(parser, `and true .`,  true, true)
+        test_expression(parser, `and false .`, true, false)
+
+        parser.delete();
+    })
+
+    it("split", async () => {
+        var parser = await siplus();
+        
+        test_expression(parser, `"1,2,3,4,5" | split ","`, null, ["1", "2", "3", "4", "5"])
+
+        parser.delete();
+    })
+
+    it("rand", async () => {
+        var parser = await siplus();
+        
+        test_expression(parser, `rand`, null, v => v >= 0 && v <= 1);
+        test_expression(parser, `rand 0 10`, null, v => v >= 0 && v <= 10);
+
+        parser.delete();
+    });
+});
+
