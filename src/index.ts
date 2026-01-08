@@ -4,9 +4,18 @@ export interface FunctionRetriever {
     (value: any, parent: any, ...parameters: any[]): any;
 }
 
+export type SIPlusParseOpts = {
+    globals?: string[]
+}
+
+export type SIPlusInvocationContext = {
+    default: any,
+    extra?: { [key: string]: any }
+}
+
 declare interface M_SIPlusParser {
-    parse_interpolated(value: any): M_TextConstructor;
-    parse_expression(value: any): M_ValueRetriever;
+    parse_interpolated(value: string, opts: SIPlusParseOpts): M_TextConstructor;
+    parse_expression(value: string, opts: SIPlusParseOpts): M_ValueRetriever;
     context(): M_ParserContext;
     delete(): void;
 }
@@ -17,12 +26,12 @@ declare interface M_ParserContext {
 }
 
 declare interface M_ValueRetriever {
-    retrieve(value: any): any;
+    retrieve(data: SIPlusInvocationContext): any;
     delete(): void;
 }
 
 declare interface M_TextConstructor {
-    construct(value: any): string;
+    construct(data: SIPlusInvocationContext): string;
     delete(): void;
 }
 
@@ -59,13 +68,13 @@ export async function siplus(opts?: SIPlusLibraryOpts): Promise<SIPlus> {
 }
 
 export interface TextConstructor {
-    construct(data: any): string;
+    construct(data: SIPlusInvocationContext): string;
     delete(): void;
     [Symbol.dispose](): void;
 }
 
 export interface ValueRetriever {
-    retrieve(data: any): any;
+    retrieve(data: SIPlusInvocationContext): any;
     delete(): void;
     [Symbol.dispose](): void;
 }
@@ -77,8 +86,8 @@ export interface SIPlusParserContext {
 }
 
 export interface SIPlus {
-    parse_interpolation(template: string): TextConstructor;
-    parse_expression(expression: string): any;
+    parse_interpolation(template: string, opts?: SIPlusParseOpts): TextConstructor;
+    parse_expression(expression: string, opts?: SIPlusParseOpts): ValueRetriever;
     context(): SIPlusParserContext;
     delete(): void;
     [Symbol.dispose](): void;
@@ -139,7 +148,7 @@ class TextConstructorImpl {
         this._constructor = text;
     }
 
-    construct(data: any): string {
+    construct(data: SIPlusInvocationContext): string {
         return call(() => {
             return this._constructor.construct(data);
         })
@@ -163,7 +172,7 @@ class ValueRetrieverImpl implements ValueRetriever {
         this._retriever = retriever;
     }
 
-    retrieve(data: any): any {
+    retrieve(data: SIPlusInvocationContext): any {
         return call(() => {
             return this._retriever.retrieve(data);
         })
@@ -215,15 +224,15 @@ class SIPlusImpl implements SIPlus {
         this._siplus = new module.SIPlus();
     }
 
-    parse_interpolation(template: string): TextConstructor{
+    parse_interpolation(template: string, opts?: SIPlusParseOpts): TextConstructor{
         return call(() => {
-            return new TextConstructorImpl(this._siplus.parse_interpolated(template));
+            return new TextConstructorImpl(this._siplus.parse_interpolated(template, opts ?? {}));
         })
     }
 
-    parse_expression(expression: string): any {
+    parse_expression(expression: string, opts?: SIPlusParseOpts): any {
         return call(() => {
-            return new ValueRetrieverImpl(this._siplus.parse_expression(expression));
+            return new ValueRetrieverImpl(this._siplus.parse_expression(expression, opts ?? {}));
         })
     }
 

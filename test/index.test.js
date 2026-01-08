@@ -3,7 +3,7 @@ const { siplus } = require("../dist/index.js");
 function test_interpolation(parser, expr, value, expected) {
     var constructor = parser.parse_interpolation(expr);
     try {
-        const result = constructor.construct(value);
+        const result = constructor.construct({ default: value });
         expect(result).toEqual(expected);
     } finally {
         constructor.delete();
@@ -13,7 +13,7 @@ function test_interpolation(parser, expr, value, expected) {
 function test_expression(parser, expr, value, expected) {
     var retriever = parser.parse_expression(expr);
     try {
-        const result = retriever.retrieve(value);
+        const result = retriever.retrieve({ default: value });
         if(typeof expected === 'function') {
             if(!expected(result)) {
                 throw new Error(`Expression "${expr}" failed. Result test function failed.`)
@@ -52,9 +52,13 @@ describe('SIPlus Tests', () => {
         ctx.delete();
 
         var retriever = parser.parse_expression(`"Hello, " | testAppend "World"`);
-        expect(retriever.retrieve(null)).toEqual("Hello, World");
+        expect(retriever.retrieve({ default: null })).toEqual("Hello, World");
 
         retriever.delete();
+
+        test_expression(parser, "@test => ( 1234 ); @test", {}, 1234);
+        test_expression(parser, "@test => ( @a => (1234); @a ); @test", {}, 1234);
+
         parser.delete();
     })
 
@@ -63,15 +67,15 @@ describe('SIPlus Tests', () => {
         
         try {
             let retriever = parser.parse_expression(`.fake`);
-            expect(retriever.retrieve({})).toEqual(undefined);
+            expect(retriever.retrieve({ default: {} })).toEqual(undefined);
             retriever.delete();
 
             retriever = parser.parse_expression(`.b`);
-            expect(retriever.retrieve({ b: 2 })).toEqual(2);
+            expect(retriever.retrieve({ default: { b: 2 } })).toEqual(2);
             retriever.delete();
 
             retriever = parser.parse_interpolation(`{ .fake }`);
-            expect(retriever.construct({})).toEqual("");
+            expect(retriever.construct({ default: {} })).toEqual("");
             retriever.delete();
         } finally {
             parser.delete();

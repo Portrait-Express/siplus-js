@@ -1,15 +1,15 @@
+#include <emscripten/bind.h>
+#include <stdexcept>
+#include <string>
+
 #include "siplus/context.h"
 #include "siplus/function.h"
 #include "siplus/parser.h"
 #include "siplus/text/constructor.h"
 #include "siplus/text/data.h"
-
-#include <emscripten/bind.h>
-#include <stdexcept>
-#include <string>
-
 #include "siplus/text/value_retrievers/retriever.h"
 #include "siplus/util.h"
+
 #include "stdlib.h"
 
 void assert_typeof(const std::string& name, const emscripten::val& val, const std::string& type) {
@@ -22,41 +22,57 @@ void assert_typeof(const std::string& name, const emscripten::val& val, const st
     }
 }
 
-class EM_TextConstructor {
-public:
-    EM_TextConstructor(SIPlus::text::TextConstructor constructor) : constructor_(constructor) {}
+std::shared_ptr<SIPlus::InvocationContext> get_context_from_opts(
+    std::shared_ptr<SIPlus::SIPlusParserContext> context, 
+    const emscripten::val& val
+) {
+    assert_typeof("opts", val, "object");
 
-    std::string
-    construct(emscripten::val value) {
-        return constructor_.construct_with(SIPlus::text::make_data(value));
+    auto builder = context->builder();
+
+    if(!val.hasOwnProperty("default")) {
+        throw std::runtime_error{"Must specify default data"};
     }
 
-private:
-    SIPlus::text::TextConstructor constructor_;
-};
+    builder.use_default(decay(val["default"]));
 
-class EM_ValueRetriever {
-public:
-    EM_ValueRetriever(
-        std::shared_ptr<SIPlus::SIPlusParserContext> context,
-        std::shared_ptr<SIPlus::text::ValueRetriever> retriever
-    ) : retriever_(retriever), context_(context) {}
+    if(val.hasOwnProperty("extra")) {
+        auto extra = val["extra"];
+        assert_typeof("opts.extra", extra, "object");
 
-    emscripten::val
-    retrieve(emscripten::val value) {
-        auto result = retriever_->retrieve(decay(value));
+        auto keys = emscripten::val::global("Object").call<emscripten::val>("keys");
+        for(int i = 0; i < keys["length"].as<long>(); i++) {
+            auto key = keys[i];
+            assert_typeof("key of ", key, "string");
 
-        if(!result.is<emscripten::val>()) {
-            result = context_->convert<emscripten::val>(result);
+            auto value = extra[key];
+            builder.with(key.as<std::string>(), decay(extra[key]));
         }
-
-        return result.as<emscripten::val>();
     }
 
-private:
-    std::shared_ptr<SIPlus::text::ValueRetriever> retriever_;
-    std::shared_ptr<SIPlus::SIPlusParserContext> context_;
-};
+    return builder.build();
+}
+
+SIPlus::ParseOpts get_opts_from_val(emscripten::val value) {
+    SIPlus::ParseOpts opts;
+
+    if(value.hasOwnProperty("globals")) {
+        auto globals = value["globals"];
+        assert_typeof("opts.globals", globals, "objects");
+
+        auto length = globals["length"];
+        assert_typeof("opts.globals.length", length, "number");
+
+        for(int i = 0; i < length.as<long>(); i++) {
+            auto name = globals[i];
+            assert_typeof(SIPlus::util::to_string("opts.globals[", i, "]"), name, "string");
+
+            opts.globals.push_back(name.as<std::string>());
+        }
+    }
+
+    return opts;
+}
 
 struct JsFunctionValueRetriever : SIPlus::text::ValueRetriever {
     JsFunctionValueRetriever(
@@ -69,13 +85,13 @@ struct JsFunctionValueRetriever : SIPlus::text::ValueRetriever {
     }
 
     SIPlus::text::UnknownDataTypeContainer retrieve(
-        const SIPlus::text::UnknownDataTypeContainer &value
+        SIPlus::InvocationContext& value
     ) const override {
         auto ctx = context_.lock();
         auto arr = emscripten::val::global("Array").new_(parameters_.size() + 2);
 
         //Base value
-        arr.set(0, ctx->convert<emscripten::val>(value).as<emscripten::val>());
+        arr.set(0, ctx->convert<emscripten::val>(value.default_data()).as<emscripten::val>());
 
         //Parent value
         auto parentVal = parent_->retrieve(value);
@@ -121,6 +137,48 @@ private:
     emscripten::val impl_;
 };
 
+class EM_TextConstructor {
+public:
+    EM_TextConstructor(
+        std::shared_ptr<SIPlus::SIPlusParserContext> context,
+        SIPlus::text::TextConstructor constructor
+    ) : context_(context), constructor_(constructor) {}
+
+    std::string
+    construct(emscripten::val value) {
+        auto context = get_context_from_opts(context_, value);
+        return constructor_.construct_with(context);
+    }
+
+private:
+    SIPlus::text::TextConstructor constructor_;
+    std::shared_ptr<SIPlus::SIPlusParserContext> context_;
+};
+
+class EM_ValueRetriever {
+public:
+    EM_ValueRetriever(
+        std::shared_ptr<SIPlus::SIPlusParserContext> context,
+        std::shared_ptr<SIPlus::text::ValueRetriever> retriever
+    ) : retriever_(retriever), context_(context) {}
+
+    emscripten::val
+    retrieve(emscripten::val value) {
+        auto context = get_context_from_opts(context_, value);
+        auto result = retriever_->retrieve(*context);
+
+        if(!result.is<emscripten::val>()) {
+            result = context_->convert<emscripten::val>(result);
+        }
+
+        return result.as<emscripten::val>();
+    }
+
+private:
+    std::shared_ptr<SIPlus::text::ValueRetriever> retriever_;
+    std::shared_ptr<SIPlus::SIPlusParserContext> context_;
+};
+
 class EM_SIParserContext {
 public:
     EM_SIParserContext(std::shared_ptr<SIPlus::SIPlusParserContext> context)
@@ -144,7 +202,7 @@ public:
     }
 
     EM_ValueRetriever
-    get_expression(emscripten::val text) {
+    get_expression(emscripten::val text, emscripten::val opts) {
         if(!text.isString()) {
             throw std::runtime_error{"expected first argument to be string. Got " + 
                 text.typeOf().as<std::string>()};
@@ -152,18 +210,21 @@ public:
 
         return EM_ValueRetriever{
             parser_.context().shared_from_this(),
-            parser_.get_expression(text.as<std::string>())
+            parser_.get_expression(text.as<std::string>(), get_opts_from_val(opts))
         };
     }
 
     EM_TextConstructor
-    get_interpolated(emscripten::val text) {
+    get_interpolated(emscripten::val text, emscripten::val opts) {
         if(!text.isString()) {
             throw std::runtime_error{"expected first argument to be string. Got " + 
                 text.typeOf().as<std::string>()};
         }
 
-        return parser_.get_interpolation(text.as<std::string>());
+        return EM_TextConstructor{
+            parser_.context().shared_from_this(),
+            parser_.get_interpolation(text.as<std::string>(), get_opts_from_val(opts))
+        };
     }
 
     EM_SIParserContext
