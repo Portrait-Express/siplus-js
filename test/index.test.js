@@ -81,6 +81,14 @@ describe('SIPlus Tests', () => {
             parser.delete();
         }
     });
+
+    test("extra", async() => {
+        var parser = await siplus();
+
+        retriever = parser.parse_interpolation(`{ $job }`, { globals: [ "job" ]});
+        expect(retriever.construct({ default: {}, extra: { job: 2 } })).toEqual("2");
+        retriever.delete();
+    })
 })
 
 describe("Stdlib", () => {

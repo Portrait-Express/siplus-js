@@ -40,7 +40,7 @@ std::shared_ptr<SIPlus::InvocationContext> get_context_from_opts(
         auto extra = val["extra"];
         assert_typeof("opts.extra", extra, "object");
 
-        auto keys = emscripten::val::global("Object").call<emscripten::val>("keys");
+        auto keys = emscripten::val::global("Object").call<emscripten::val>("keys", extra);
         for(int i = 0; i < keys["length"].as<long>(); i++) {
             auto key = keys[i];
             assert_typeof("key of ", key, "string");
@@ -58,7 +58,7 @@ SIPlus::ParseOpts get_opts_from_val(emscripten::val value) {
 
     if(value.hasOwnProperty("globals")) {
         auto globals = value["globals"];
-        assert_typeof("opts.globals", globals, "objects");
+        assert_typeof("opts.globals", globals, "object");
 
         auto length = globals["length"];
         assert_typeof("opts.globals.length", length, "number");
