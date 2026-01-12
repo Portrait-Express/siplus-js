@@ -85,8 +85,8 @@ describe('SIPlus Tests', () => {
     test("extra", async() => {
         var parser = await siplus();
 
-        retriever = parser.parse_interpolation(`{ $job }`, { globals: [ "job" ]});
-        expect(retriever.construct({ default: {}, extra: { job: 2 } })).toEqual("2");
+        retriever = parser.parse_interpolation(`{ add $job 2 }`, { globals: [ "job" ]});
+        expect(retriever.construct({ default: {}, extra: { job: 2 } })).toEqual("4");
         retriever.delete();
     })
 })
