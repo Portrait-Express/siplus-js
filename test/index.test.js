@@ -119,5 +119,14 @@ describe("Stdlib", () => {
 
         parser.delete();
     });
+
+    it("set", async () => {
+        var parser = await siplus();
+        
+        test_expression(parser, `set_new | set_add 2 | set_has 2`, null, true);
+        test_expression(parser, `set_new | set_add 20 | set_has 2`, null, false);
+
+        parser.delete();
+    })
 });
 

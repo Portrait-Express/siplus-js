@@ -16,7 +16,7 @@
         "build:debug": "npm run build:cpp:debug && tsc",
         "build:cpp": "BUILD_TYPE=Release scripts/build.sh",
         "build:cpp:debug": "BUILD_TYPE=Debug scripts/build.sh",
-        "test": "jest"
+        "test": "jest --verbose"
     },
     "author": "",
     "license": "ISC",
