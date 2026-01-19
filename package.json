@@ -2,6 +2,8 @@
     "name": "@portrait-express/siplus",
     "version": "1.3.5",
     "description": "JavaScript/Wasm bindings for SIPlus",
+    "homepage": "https://github.com/Portrait-Express/siplus-js",
+    "repository": "https://github.com/Portrait-Express/siplus-js",
     "main": "./dist/index.js",
     "types": "./types/index.d.ts",
     "type": "commonjs",
@@ -18,8 +20,15 @@
         "build:cpp:debug": "BUILD_TYPE=Debug scripts/build.sh",
         "test": "jest --verbose"
     },
-    "author": "",
+    "author": "Portrait-Express",
     "license": "ISC",
+    "keywords": [
+        "wasm",
+        "utility",
+        "template",
+        "string",
+        "text"
+    ],
     "devDependencies": {
         "typescript": "^5.9.2",
         "jest": "^30.1.3"
