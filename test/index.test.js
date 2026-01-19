@@ -58,6 +58,7 @@ describe('SIPlus Tests', () => {
 
         test_expression(parser, "@test => ( 1234 ); @test", {}, 1234);
         test_expression(parser, "@test => ( @a => (1234); @a ); @test", {}, 1234);
+        test_expression(parser, "@test(val) => ( $val ); @test 1234", {}, 1234);
 
         parser.delete();
     })
