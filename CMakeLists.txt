@@ -1,3 +1,5 @@
+cmake_minimum_required(VERSION 3.20)
+
 set(EM_COMPILE_ARGS 
     -Wno-unused-command-line-argument 
     -DNDEBUG

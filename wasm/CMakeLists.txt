@@ -22,6 +22,7 @@ target_link_options(siplus_js PRIVATE
     "-sEXPORTED_FUNCTIONS=['getCppExceptionTag', 'getCppExceptionThrownObjectFromWebAssemblyException']"
     -sEXPORT_EXCEPTION_HANDLING_HELPERS
     --bind)
+
 set_target_properties(siplus_js PROPERTIES COMPILE_FLAGS "${EM_CFLAGS}")
 
 target_link_libraries(siplus_js siplus)

@@ -2,13 +2,13 @@
 #include <stdexcept>
 #include <string>
 
-#include "siplus/context.h"
-#include "siplus/function.h"
-#include "siplus/parser.h"
-#include "siplus/text/constructor.h"
-#include "siplus/text/data.h"
-#include "siplus/text/value_retrievers/retriever.h"
-#include "siplus/util.h"
+#include "siplus/context.hxx"
+#include "siplus/function.hxx"
+#include "siplus/parser.hxx"
+#include "siplus/text/constructor.hxx"
+#include "siplus/data.hxx"
+#include "siplus/text/value_retrievers/retriever.hxx"
+#include "siplus/util.hxx"
 
 #include "stdlib.h"
 
@@ -84,29 +84,29 @@ struct JsFunctionValueRetriever : SIPlus::text::ValueRetriever {
         assert_typeof("function_impl", impl_, "function");
     }
 
-    SIPlus::text::UnknownDataTypeContainer retrieve(
+    SIPlus::UnknownDataTypeContainer retrieve(
         SIPlus::InvocationContext& value
     ) const override {
         auto ctx = context_.lock();
         auto arr = emscripten::val::global("Array").new_(parameters_.size() + 2);
 
         //Base value
-        arr.set(0, ctx->convert<emscripten::val>(value.default_data()).as<emscripten::val>());
+        arr.set(0, ctx->convert<JSType>(value.default_data()).as<JSType>());
 
         //Parent value
         auto parentVal = parent_->retrieve(value);
-        arr.set(1, ctx->convert<emscripten::val>(parentVal).as<emscripten::val>());
+        arr.set(1, ctx->convert<JSType>(parentVal).as<JSType>());
 
         //Set parameters
         for(int i = 0; i < parameters_.size(); i++) {
             auto paramVal = parameters_[i]->retrieve(value);
-            arr.set(i + 2, ctx->convert<emscripten::val>(paramVal).as<emscripten::val>());
+            arr.set(i + 2, ctx->convert<JSType>(paramVal).as<JSType>());
         }
 
         //Invoke function
         auto ret = impl_.call<emscripten::val>("apply", emscripten::val::null(), arr);
         
-        return SIPlus::text::make_data(decay(ret));
+        return decay(ret);
     }
 
 private:
@@ -167,11 +167,11 @@ public:
         auto context = get_context_from_opts(context_, value);
         auto result = retriever_->retrieve(*context);
 
-        if(!result.is<emscripten::val>()) {
-            result = context_->convert<emscripten::val>(result);
+        if(!result.is<JSType>()) {
+            result = context_->convert<JSType>(result);
         }
 
-        return result.as<emscripten::val>();
+        return result.as<JSType>();
     }
 
 private:

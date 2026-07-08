@@ -36,6 +36,16 @@ describe('SIPlus Tests', () => {
         parser.delete();
     })
 
+    test("Version 2.0.4", async () => {
+        var parser = await siplus();
+
+        try {
+            test_expression(parser, "var $i = 1; [1, 2] | .[$i]", null, 2)
+        } finally {
+            parser.delete();
+        }
+    })
+
     test("Function", async () => {
         var parser = await siplus();
 

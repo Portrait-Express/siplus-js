@@ -1,4 +1,4 @@
-import Module from "../lib/siplus_js.js"
+const Module = require("../lib/siplus_js.js");
 
 export interface FunctionRetriever {
     (value: any, parent: any, ...parameters: any[]): any;
