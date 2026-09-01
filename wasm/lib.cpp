@@ -1,26 +1,12 @@
+#include "util.hpp"
+#include "type.hpp"
+#include "value.hpp"
+
 #include <emscripten/bind.h>
 #include <stdexcept>
 #include <string>
 
 #include "siplus/context.hxx"
-#include "siplus/function.hxx"
-#include "siplus/parser.hxx"
-#include "siplus/text/constructor.hxx"
-#include "siplus/data.hxx"
-#include "siplus/text/value_retrievers/retriever.hxx"
-#include "siplus/util.hxx"
-
-#include "stdlib.h"
-
-void assert_typeof(const std::string& name, const emscripten::val& val, const std::string& type) {
-    if(val.typeOf().as<std::string>() != type) {
-        auto msg = SIPlus::util::to_string(
-            "Expected ", name, " to be type ", type, 
-            " got ", val.typeOf().as<std::string>());
-
-        throw std::runtime_error{msg};
-    }
-}
 
 std::shared_ptr<SIPlus::InvocationContext> get_context_from_opts(
     std::shared_ptr<SIPlus::SIPlusParserContext> context, 
@@ -34,7 +20,7 @@ std::shared_ptr<SIPlus::InvocationContext> get_context_from_opts(
         throw std::runtime_error{"Must specify default data"};
     }
 
-    builder.use_default(decay(val["default"]));
+    builder.use_default(jsToCpp(val["default"]));
 
     if(val.hasOwnProperty("extra")) {
         auto extra = val["extra"];
@@ -46,7 +32,7 @@ std::shared_ptr<SIPlus::InvocationContext> get_context_from_opts(
             assert_typeof("key of ", key, "string");
 
             auto value = extra[key];
-            builder.with(key.as<std::string>(), decay(extra[key]));
+            builder.with(key.as<std::string>(), jsToCpp(extra[key]));
         }
     }
 
@@ -74,69 +60,6 @@ SIPlus::ParseOpts get_opts_from_val(emscripten::val value) {
     return opts;
 }
 
-struct JsFunctionValueRetriever : SIPlus::text::ValueRetriever {
-    JsFunctionValueRetriever(
-        std::weak_ptr<SIPlus::SIPlusParserContext> context,
-        std::shared_ptr<SIPlus::text::ValueRetriever> parent,
-        std::vector<std::shared_ptr<SIPlus::text::ValueRetriever>> parameters,
-        emscripten::val impl
-    ) : context_(context), parent_(parent), parameters_(parameters), impl_(impl) {
-        assert_typeof("function_impl", impl_, "function");
-    }
-
-    SIPlus::UnknownDataTypeContainer retrieve(
-        SIPlus::InvocationContext& value
-    ) const override {
-        auto ctx = context_.lock();
-        auto arr = emscripten::val::global("Array").new_(parameters_.size() + 2);
-
-        //Base value
-        arr.set(0, ctx->convert<JSType>(value.default_data()).as<JSType>());
-
-        //Parent value
-        auto parentVal = parent_->retrieve(value);
-        arr.set(1, ctx->convert<JSType>(parentVal).as<JSType>());
-
-        //Set parameters
-        for(int i = 0; i < parameters_.size(); i++) {
-            auto paramVal = parameters_[i]->retrieve(value);
-            arr.set(i + 2, ctx->convert<JSType>(paramVal).as<JSType>());
-        }
-
-        //Invoke function
-        auto ret = impl_.call<emscripten::val>("apply", emscripten::val::null(), arr);
-        
-        return decay(ret);
-    }
-
-private:
-    std::weak_ptr<SIPlus::SIPlusParserContext> context_;
-    std::shared_ptr<SIPlus::text::ValueRetriever> parent_;
-    std::vector<std::shared_ptr<SIPlus::text::ValueRetriever>> parameters_;
-    emscripten::val impl_;
-};
-
-struct JsFunctionImpl : SIPlus::Function {
-    JsFunctionImpl(
-        std::weak_ptr<SIPlus::SIPlusParserContext> context,
-        emscripten::val impl
-    ) : context_(context), impl_(impl) {
-        assert_typeof("function_impl", impl_, "function");
-    }
-
-    std::shared_ptr<SIPlus::text::ValueRetriever> value(
-        std::shared_ptr<SIPlus::text::ValueRetriever> parent, 
-        std::vector<std::shared_ptr<SIPlus::text::ValueRetriever>> parameters
-    ) const override {
-        auto ctx = context_.lock();
-        return std::make_shared<JsFunctionValueRetriever>(ctx, parent, parameters, impl_);
-    }
-
-private:
-    std::weak_ptr<SIPlus::SIPlusParserContext> context_;
-    emscripten::val impl_;
-};
-
 class EM_TextConstructor {
 public:
     EM_TextConstructor(
@@ -158,8 +81,8 @@ private:
 class EM_ValueRetriever {
 public:
     EM_ValueRetriever(
-        std::shared_ptr<SIPlus::SIPlusParserContext> context,
-        std::shared_ptr<SIPlus::text::ValueRetriever> retriever
+        std::shared_ptr<SIPlusParserContext> context,
+        std::shared_ptr<ValueRetriever> retriever
     ) : retriever_(retriever), context_(context) {}
 
     emscripten::val
@@ -175,8 +98,8 @@ public:
     }
 
 private:
-    std::shared_ptr<SIPlus::text::ValueRetriever> retriever_;
-    std::shared_ptr<SIPlus::SIPlusParserContext> context_;
+    std::shared_ptr<ValueRetriever> retriever_;
+    std::shared_ptr<SIPlusParserContext> context_;
 };
 
 class EM_SIParserContext {
@@ -198,7 +121,12 @@ private:
 class EM_SIParser {
 public:
     EM_SIParser() : parser_() {
-        attach_stl(parser_.context().shared_from_this());
+        auto context = parser_.context().shared_from_this(); 
+        context->emplace_converter<JsArrayConverter>(context);
+        context->emplace_converter<ToJsPrimitiveConverter>();
+        context->emplace_converter<FromJsPrimitiveConverter>(context);
+
+        SIPlus::stl::attach_stl(*context);
     }
 
     EM_ValueRetriever

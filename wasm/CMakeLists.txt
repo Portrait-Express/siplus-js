@@ -15,7 +15,13 @@ execute_process(
 
 set(EMSCRIPTEN_LINK_FLAGS "-s WASM=2 -s INVOKE_RUN=0")
 
-set(SIPLUS_JS_SOURCES lib.cpp stdlib.cpp)
+set(SIPLUS_JS_SOURCES 
+    lib.cpp 
+    stdlib.cpp
+    type.cpp
+    util.cpp
+    value.cpp)
+
 add_executable(siplus_js ${SIPLUS_JS_SOURCES})
 target_link_options(siplus_js PRIVATE 
     "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=['\$getCppExceptionTag', '\$getCppExceptionThrownObjectFromWebAssemblyException']"
