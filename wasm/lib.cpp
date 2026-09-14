@@ -83,18 +83,14 @@ public:
     EM_ValueRetriever(
         std::shared_ptr<SIPlusParserContext> context,
         std::shared_ptr<ValueRetriever> retriever
-    ) : retriever_(retriever), context_(context) {}
+    ) : context_(context), retriever_(retriever) {}
 
     emscripten::val
     retrieve(emscripten::val value) {
         auto context = get_context_from_opts(context_, value);
         auto result = retriever_->retrieve(*context);
 
-        if(!result.is<JSType>()) {
-            result = context_->convert<JSType>(result);
-        }
-
-        return result.as<JSType>();
+        return cppToJs(result);
     }
 
 private:
@@ -111,7 +107,7 @@ public:
         assert_typeof("name", name, "string");
         assert_typeof("impl", impl, "function");
 
-        context_->emplace_function<JsFunctionImpl>(name.as<std::string>(), context_, impl);
+        context_->emplace_function<JsFunctionImpl>(name.as<std::string>(), impl);
     }
 
 private:
@@ -120,14 +116,7 @@ private:
 
 class EM_SIParser {
 public:
-    EM_SIParser() : parser_() {
-        auto context = parser_.context().shared_from_this(); 
-        context->emplace_converter<JsArrayConverter>(context);
-        context->emplace_converter<ToJsPrimitiveConverter>();
-        context->emplace_converter<FromJsPrimitiveConverter>(context);
-
-        SIPlus::stl::attach_stl(*context);
-    }
+    EM_SIParser() : parser_() { }
 
     EM_ValueRetriever
     get_expression(emscripten::val text, emscripten::val opts) {

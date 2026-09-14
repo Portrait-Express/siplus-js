@@ -73,7 +73,7 @@ describe('SIPlus Tests', () => {
 
     siTest("Accessor", parser => {
         let retriever = parser.parse_expression(`.fake`);
-        expect(retriever.retrieve({ default: {} })).toEqual(undefined);
+        expect(retriever.retrieve({ default: {} })).toEqual(null);
         retriever.delete();
 
         retriever = parser.parse_expression(`.b`);
@@ -100,8 +100,8 @@ describe('SIPlus Tests', () => {
 
 describe("Stdlib", () => {
     siTest("Converters", parser => {
-        test_expression(parser, `eq 9 .`,     "9",  true)
-        test_expression(parser, `eq "9" .`,   9,    true)
+        test_expression(parser, `eq 9 .`,      9,    true)
+        test_expression(parser, `eq "9" .`,    "9",  true)
         test_expression(parser, `and true .`,  true, true)
         test_expression(parser, `and false .`, true, false)
         test_expression(parser, `[1, 2, 3] | map (add . 2)`, null, [3, 4, 5])

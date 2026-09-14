@@ -6,7 +6,6 @@
 
 struct JsFunctionValueRetriever : ValueRetriever {
     JsFunctionValueRetriever(
-        std::weak_ptr<SIPlusParserContext> context,
         std::shared_ptr<ValueRetriever> parent,
         std::vector<std::shared_ptr<ValueRetriever>> parameters,
         emscripten::val impl
@@ -15,7 +14,6 @@ struct JsFunctionValueRetriever : ValueRetriever {
     SIPlus::UnknownDataTypeContainer retrieve(SIPlus::InvocationContext& value) const override;
 
 private:
-    std::weak_ptr<SIPlusParserContext> context_;
     std::shared_ptr<ValueRetriever> parent_;
     std::vector<std::shared_ptr<ValueRetriever>> parameters_;
     emscripten::val impl_;
@@ -26,10 +24,7 @@ private:
 
 
 
-JsFunctionImpl::JsFunctionImpl(
-    std::weak_ptr<SIPlusParserContext> context,
-    emscripten::val impl
-) : context_(context), impl_(impl) {
+JsFunctionImpl::JsFunctionImpl(emscripten::val impl) : impl_(impl) {
     assert_typeof("function_impl", impl_, "function");
 }
 
@@ -37,8 +32,7 @@ std::shared_ptr<ValueRetriever> JsFunctionImpl::value(
     std::shared_ptr<ValueRetriever> parent, 
     std::vector<std::shared_ptr<ValueRetriever>> parameters
 ) const {
-    auto ctx = context_.lock();
-    return std::make_shared<JsFunctionValueRetriever>(ctx, parent, parameters, impl_);
+    return std::make_shared<JsFunctionValueRetriever>(parent, parameters, impl_);
 }
 
 
@@ -47,31 +41,29 @@ std::shared_ptr<ValueRetriever> JsFunctionImpl::value(
 
 
 JsFunctionValueRetriever::JsFunctionValueRetriever(
-    std::weak_ptr<SIPlusParserContext> context,
     std::shared_ptr<ValueRetriever> parent,
     std::vector<std::shared_ptr<ValueRetriever>> parameters,
     emscripten::val impl
-) : context_(context), parent_(parent), parameters_(parameters), impl_(impl) {
+) : parent_(parent), parameters_(parameters), impl_(impl) {
     assert_typeof("function_impl", impl_, "function");
 }
 
 SIPlus::UnknownDataTypeContainer JsFunctionValueRetriever::retrieve(
     SIPlus::InvocationContext& value
 ) const {
-    auto ctx = context_.lock();
     auto arr = emscripten::val::global("Array").new_(parameters_.size() + 2);
 
     //Base value
-    arr.set(0, ctx->convert<JSType>(value.default_data()).as<JSType>());
+    arr.set(0, cppToJs(value.default_data()));
 
     //Parent value
     auto parentVal = parent_->retrieve(value);
-    arr.set(1, ctx->convert<JSType>(parentVal).as<JSType>());
+    arr.set(1, cppToJs(parentVal));
 
     //Set parameters
     for(int i = 0; i < parameters_.size(); i++) {
         auto paramVal = parameters_[i]->retrieve(value);
-        arr.set(i + 2, ctx->convert<JSType>(paramVal).as<JSType>());
+        arr.set(i + 2, cppToJs(paramVal));
     }
 
     //Invoke function

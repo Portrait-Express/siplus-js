@@ -8,7 +8,7 @@
 using namespace SIPlus;
 
 struct JsFunctionImpl : Function {
-    JsFunctionImpl(std::weak_ptr<SIPlusParserContext> context, emscripten::val impl);
+    JsFunctionImpl(emscripten::val impl);
 
     std::shared_ptr<ValueRetriever> value(
         std::shared_ptr<ValueRetriever> parent, 
@@ -16,7 +16,6 @@ struct JsFunctionImpl : Function {
     ) const override;
 
 private:
-    std::weak_ptr<SIPlus::SIPlusParserContext> context_;
     emscripten::val impl_;
 };
 
