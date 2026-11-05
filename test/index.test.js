@@ -122,3 +122,14 @@ describe("Stdlib", () => {
     })
 });
 
+describe("Issues", () => {
+    siTest("#1: RuntimeError on no piped value", parser => {
+        function dummy() { return null; }
+
+        const ctx = parser.context();
+        ctx.emplace_function("dummy", dummy);
+        ctx.delete();
+
+        test_expression(parser, `dummy`, null, null);
+    });
+})
