@@ -57,8 +57,9 @@ SIPlus::UnknownDataTypeContainer JsFunctionValueRetriever::retrieve(
     arr.set(0, cppToJs(value.default_data()));
 
     //Parent value
-    auto parentVal = parent_->retrieve(value);
-    arr.set(1, cppToJs(parentVal));
+    if(parent_) {
+        arr.set(1, cppToJs(parent_->retrieve(value)));
+    }
 
     //Set parameters
     for(int i = 0; i < parameters_.size(); i++) {
