@@ -14,24 +14,26 @@ export type SIPlusInvocationContext = {
 }
 
 declare interface M_SIPlusParser {
-    parse_interpolated(value: string, opts: SIPlusParseOpts): M_TextConstructor;
-    parse_expression(value: string, opts: SIPlusParseOpts): M_ValueRetriever;
+    parseInterpolated(value: string, opts: SIPlusParseOpts): M_TextConstructor;
+    parseExpression(value: string, opts: SIPlusParseOpts): M_ValueRetriever;
     context(): M_ParserContext;
     delete(): void;
 }
 
 declare interface M_ParserContext {
-    emplace_function(name: string, func: FunctionRetriever): void;
+    addFunction(name: string, func: FunctionRetriever): void;
     delete(): void;
 }
 
 declare interface M_ValueRetriever {
     retrieve(data: SIPlusInvocationContext): any;
+    retrieveMany(data: SIPlusInvocationContext[]): any[];
     delete(): void;
 }
 
 declare interface M_TextConstructor {
     construct(data: SIPlusInvocationContext): string;
+    constructMany(data: SIPlusInvocationContext[]): string[];
     delete(): void;
 }
 
@@ -67,46 +69,44 @@ export async function siplus(opts?: SIPlusLibraryOpts): Promise<SIPlus> {
     return new SIPlusImpl();
 }
 
-export interface TextConstructor {
+export interface TextConstructor extends Disposable {
     construct(data: SIPlusInvocationContext): string;
+    constructMany(data: SIPlusInvocationContext[]): string[];
     delete(): void;
-    [Symbol.dispose](): void;
 }
 
-export interface ValueRetriever {
+export interface ValueRetriever extends Disposable {
     retrieve(data: SIPlusInvocationContext): any;
+    retrieveMany(data: SIPlusInvocationContext[]): any[];
     delete(): void;
-    [Symbol.dispose](): void;
 }
 
-export interface SIPlusParserContext {
-    emplace_function(name: string, func: FunctionRetriever): void;
+export interface SIPlusParserContext extends Disposable {
+    addFunction(name: string, func: FunctionRetriever): void;
     delete(): void;
-    [Symbol.dispose](): void;
 }
 
-export interface SIPlus {
-    parse_interpolation(template: string, opts?: SIPlusParseOpts): TextConstructor;
-    parse_expression(expression: string, opts?: SIPlusParseOpts): ValueRetriever;
+export interface SIPlus extends Disposable {
+    parseInterpolation(template: string, opts?: SIPlusParseOpts): TextConstructor;
+    parseExpression(expression: string, opts?: SIPlusParseOpts): ValueRetriever;
     context(): SIPlusParserContext;
     delete(): void;
-    [Symbol.dispose](): void;
 }
 
 /**
  * Utility function to provide similar functionality to 
- * SIPlus::util::get_parameters_first_parent.
+ * SIPlus::util::getParameters_first_parent.
  *
  * @param {ValueRetriever|null} parent The parent parameter
  * @param {ValueRetriever[]} parameters The parameter list
  * @param {number} count The number of required parameters
- * @param {number} [count_optional] The number of optional parameters. Default: 0
+ * @param {number} [countOptional] The number of optional parameters. Default: 0
  * @returns {ValueRetriever[]} The parameter list
  */
 export function getParametersFirstParent(
     parent: ValueRetriever|null, 
     parameters: ValueRetriever[],
-    count: number, count_optional: number = 0
+    count: number, countOptional: number = 0
 ): ValueRetriever[] {
     let ret: ValueRetriever[] = []
 
@@ -119,8 +119,8 @@ export function getParametersFirstParent(
     if(ret.length < count) {
         throw RangeError(`Expected at least ${count} parameters. Got ${ret.length}`);
     }
-    if(ret.length > count+count_optional) {
-        throw RangeError(`Expected at most ${count_optional} parameters. Got ${ret.length}`);
+    if(ret.length > count+countOptional) {
+        throw RangeError(`Expected at most ${countOptional} parameters. Got ${ret.length}`);
     }
 
     return ret;
@@ -154,6 +154,12 @@ class TextConstructorImpl {
         })
     }
 
+    constructMany(data: SIPlusInvocationContext[]): string[] {
+        return call(() => {
+            return this._constructor.constructMany(data);
+        });
+    }
+
     delete() {
         return call(() => {
             this._constructor.delete();
@@ -172,9 +178,32 @@ class ValueRetrieverImpl implements ValueRetriever {
         this._retriever = retriever;
     }
 
+    /**
+     * Invoke a SIPlus ValueRetriever to get a value.
+     *
+     * @param {SIPlusInvocationContext} data The invocation data
+     * @returns {any} The result of the expression.
+     */
     retrieve(data: SIPlusInvocationContext): any {
         return call(() => {
             return this._retriever.retrieve(data);
+        })
+    }
+
+    /**
+     * Calls `retrieve` many times in wasm code, reducing the number of times
+     * necessary to cross the WASM barrier.
+     *
+     * The invocation data will be executed in the order provided, and the data
+     * returned will be in the same order as the invocations.
+     *
+     * @param {SIPlusInvocationContext[]} contexts The invocation data.
+     * @returns {any} The results of the operations. This is the same length 
+     * as `contexts`
+     */
+    retrieveMany(contexts: SIPlusInvocationContext[]): any[] {
+        return call(() => {
+            return this._retriever.retrieveMany(contexts);
         })
     }
 
@@ -196,9 +225,9 @@ class SIPlusParserContextImpl implements SIPlusParserContext {
         this._context = impl;
     }
 
-    emplace_function(name: string, func: FunctionRetriever): void {
+    addFunction(name: string, func: FunctionRetriever): void {
         call(() => {
-            this._context.emplace_function(name, func);
+            this._context.addFunction(name, func);
         });
     }
 
@@ -218,21 +247,21 @@ class SIPlusImpl implements SIPlus {
 
     constructor() {
         if(!module) {
-            throw new Error("Not initialized. Call siplus_initialize()");
+            throw new Error("Not initialized. Call siplusInitialize()");
         }
 
         this._siplus = new module.SIPlus();
     }
 
-    parse_interpolation(template: string, opts?: SIPlusParseOpts): TextConstructor{
+    parseInterpolation(template: string, opts?: SIPlusParseOpts): TextConstructor{
         return call(() => {
-            return new TextConstructorImpl(this._siplus.parse_interpolated(template, opts ?? {}));
+            return new TextConstructorImpl(this._siplus.parseInterpolated(template, opts ?? {}));
         })
     }
 
-    parse_expression(expression: string, opts?: SIPlusParseOpts): any {
+    parseExpression(expression: string, opts?: SIPlusParseOpts): any {
         return call(() => {
-            return new ValueRetrieverImpl(this._siplus.parse_expression(expression, opts ?? {}));
+            return new ValueRetrieverImpl(this._siplus.parseExpression(expression, opts ?? {}));
         })
     }
 

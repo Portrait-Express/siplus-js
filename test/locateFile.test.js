@@ -8,7 +8,7 @@ describe ('Loading test', () => {
             }
         });
 
-        parser.parse_interpolation("Hello, { .text }");
+        parser.parseInterpolation("Hello, { .text }");
         parser.delete();
     })
 })

@@ -73,6 +73,28 @@ public:
         return constructor_.construct_with(context);
     }
 
+    emscripten::val
+    constructMany(emscripten::val value) {
+        if(!value.isArray()) {
+            auto msg = SIPlus::util::to_string(
+                "Expected contexts to be Array. got ", 
+                value.typeOf().as<std::string>()
+            );
+
+            throw std::runtime_error{msg};
+
+        }
+
+        auto arr = emscripten::val::array();
+        for(auto jsContext : value) {
+            auto context = get_context_from_opts(context_, jsContext);
+            auto result = constructor_.construct_with(context);
+            arr.call<void>("push", emscripten::val{result});
+        }
+
+        return arr;
+    }
+
 private:
     SIPlus::text::TextConstructor constructor_;
     std::shared_ptr<SIPlus::SIPlusParserContext> context_;
@@ -91,6 +113,28 @@ public:
         auto result = retriever_->retrieve(*context);
 
         return cppToJs(result);
+    }
+
+    emscripten::val
+    retrieveMany(emscripten::val value) {
+        if(!value.isArray()) {
+            auto msg = SIPlus::util::to_string(
+                "Expected contexts to be Array. got ", 
+                value.typeOf().as<std::string>()
+            );
+
+            throw std::runtime_error{msg};
+
+        }
+
+        auto arr = emscripten::val::array();
+        for(auto jsContext : value) {
+            auto context = get_context_from_opts(context_, jsContext);
+            auto result = retriever_->retrieve(*context);
+            arr.call<void>("push", cppToJs(result));
+        }
+
+        return arr;
     }
 
 private:
@@ -162,16 +206,18 @@ EMSCRIPTEN_BINDINGS(siplus) {
 
     auto parser_class = emscripten::class_<EM_SIParser>("SIPlus")
         .constructor()
-        .function("parse_interpolated", &EM_SIParser::get_interpolated)
-        .function("parse_expression", &EM_SIParser::get_expression)
+        .function("parseInterpolated", &EM_SIParser::get_interpolated)
+        .function("parseExpression", &EM_SIParser::get_expression)
         .function("context", &EM_SIParser::context);
 
     auto context_class = emscripten::class_<EM_SIParserContext>("ParserContext")
-        .function("emplace_function", &EM_SIParserContext::emplace_function);
+        .function("addFunction", &EM_SIParserContext::emplace_function);
 
     auto retriever_class = emscripten::class_<EM_ValueRetriever>("ValueRetriever")
-        .function("retrieve", &EM_ValueRetriever::retrieve);
+        .function("retrieve", &EM_ValueRetriever::retrieve)
+        .function("retrieveMany", &EM_ValueRetriever::retrieveMany);
 
     auto constructor_class = emscripten::class_<EM_TextConstructor>("TextConstructor")
-        .function("construct", &EM_TextConstructor::construct);
+        .function("construct", &EM_TextConstructor::construct)
+        .function("constructMany", &EM_TextConstructor::constructMany);
 }

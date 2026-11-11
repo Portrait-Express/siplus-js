@@ -1,5 +1,17 @@
 const { siplus } = require("../dist/index.js");
 
+/** @import { describe, test, it, expect } from "@jest/globals" */
+
+/**
+ * @typedef {(parser: import("../types/index.js").SIPlus) => void|Promise<void>} SITestCallback
+ */
+
+/**
+ * Test involvoing a parser
+ *
+ * @param {string} name The name of the test.
+ * @param {SITestCallback} cb The test implementation
+ */
 function siTest(name, cb) {
     it(name, async () => {
         const parser = await siplus();
@@ -13,7 +25,7 @@ function siTest(name, cb) {
 }
 
 function test_interpolation(parser, expr, value, expected) {
-    var constructor = parser.parse_interpolation(expr);
+    var constructor = parser.parseInterpolation(expr);
     try {
         const result = constructor.construct({ default: value });
         expect(result).toEqual(expected);
@@ -23,7 +35,7 @@ function test_interpolation(parser, expr, value, expected) {
 }
 
 function test_expression(parser, expr, value, expected) {
-    var retriever = parser.parse_expression(expr);
+    var retriever = parser.parseExpression(expr);
     try {
         const result = retriever.retrieve({ default: value });
         if(typeof expected === 'function') {
@@ -44,8 +56,8 @@ describe('SIPlus Tests', () => {
         test_expression(parser, "map . .id", [{id: 1}, {id: 2}], [1, 2])
     })
 
-    siTest("Version 2.0.4", async parser => {
-        test_expression(parser, "var $i = 1; [1, 2] | .[$i]", null, 2)
+    siTest("Version 2.3.0", async parser => {
+        test_expression(parser, "dict_new | dict_set 2 3 | dict_get 2", null, 3);
     })
 
     siTest("Function", parser => {
@@ -58,10 +70,10 @@ describe('SIPlus Tests', () => {
         }
 
         let ctx = parser.context()
-        ctx.emplace_function("testAppend", func);
+        ctx.addFunction("testAppend", func);
         ctx.delete();
 
-        var retriever = parser.parse_expression(`"Hello, " | testAppend "World"`);
+        var retriever = parser.parseExpression(`"Hello, " | testAppend "World"`);
         expect(retriever.retrieve({ default: null })).toEqual("Hello, World");
 
         retriever.delete();
@@ -72,15 +84,15 @@ describe('SIPlus Tests', () => {
     })
 
     siTest("Accessor", parser => {
-        let retriever = parser.parse_expression(`.fake`);
+        let retriever = parser.parseExpression(`.fake`);
         expect(retriever.retrieve({ default: {} })).toEqual(null);
         retriever.delete();
 
-        retriever = parser.parse_expression(`.b`);
+        retriever = parser.parseExpression(`.b`);
         expect(retriever.retrieve({ default: { b: 2 } })).toEqual(2);
         retriever.delete();
 
-        retriever = parser.parse_interpolation(`{ .fake }`);
+        retriever = parser.parseInterpolation(`{ .fake }`);
         expect(retriever.construct({ default: {} })).toEqual("");
         retriever.delete();
     });
@@ -92,9 +104,35 @@ describe('SIPlus Tests', () => {
     });
 
     siTest("extra", parser => {
-        retriever = parser.parse_interpolation(`{ add $job 2 }`, { globals: [ "job" ]});
+        retriever = parser.parseInterpolation(`{ add $job 2 }`, { globals: [ "job" ]});
         expect(retriever.construct({ default: {}, extra: { job: 2 } })).toEqual("4");
         retriever.delete();
+    })
+
+    siTest("ValueRetriever.retrieveMany", parser => {
+        const retriever = parser.parseExpression("rand"); 
+        try {
+            const results = retriever.retrieveMany(new Array(24).fill({ default: null }));
+
+            expect(results).toEqual(
+                results.map(() => expect.any(Number))
+            );
+        } finally {
+            retriever.delete();
+        }
+    })
+
+    siTest("TextContructor.constructMany", parser => {
+        const retriever = parser.parseInterpolation("Hello, { rand }"); 
+        try {
+            const results = retriever.constructMany(new Array(24).fill({ default: null }));
+
+            expect(results).toEqual(
+                results.map(() => expect.any(String))
+            );
+        } finally {
+            retriever.delete();
+        }
     })
 })
 
@@ -127,7 +165,7 @@ describe("Issues", () => {
         function dummy() { return null; }
 
         const ctx = parser.context();
-        ctx.emplace_function("dummy", dummy);
+        ctx.addFunction("dummy", dummy);
         ctx.delete();
 
         test_expression(parser, `dummy`, null, null);

@@ -9,7 +9,7 @@ describe ('Loading test', () => {
             locateFile: () => "BS Value" 
         });
 
-        parser.parse_interpolation("Hello, { .text }");
+        parser.parseInterpolation("Hello, { .text }");
         parser.delete();
     })
 })
