@@ -56,8 +56,8 @@ describe('SIPlus Tests', () => {
         test_expression(parser, "map . .id", [{id: 1}, {id: 2}], [1, 2])
     })
 
-    siTest("Version 2.3.0", async parser => {
-        test_expression(parser, "dict_new | dict_set 2 3 | dict_get 2", null, 3);
+    siTest("Version 2.3.1", async parser => {
+        test_expression(parser, "[1, 2, 3] | last", null, 3);
     })
 
     siTest("Function", parser => {
